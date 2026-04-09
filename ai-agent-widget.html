@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Agent Sidebar Widget</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body { font-family: 'Inter', system-ui, sans-serif; }
+
+    /* Outer layer - transparent frosted glass with highlight */
+    .border-outer {
+      background: rgba(255, 255, 255, 0.25);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border: 4px solid transparent;
+      box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.5),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.2),
+        inset 1px 0 0 rgba(255, 255, 255, 0.3),
+        inset -1px 0 0 rgba(255, 255, 255, 0.1);
+      position: relative;
+    }
+
+    /* Highlight effect in top-right corner */
+    .border-outer::before {
+      content: '';
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 20px;
+      height: 20px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 100%);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    /* Inner layer - pure white solid background with gap from outer */
+    .border-inner {
+      background: rgb(255, 255, 255);
+      border: 1px solid rgba(255, 255, 255, 1);
+      box-shadow:
+        inset 0 0 0 6px rgba(255, 255, 255, 0.98),
+        inset 0 1px 3px rgba(0, 0, 0, 0.03);
+    }
+
+    /* Card background */
+    .card-bg {
+      background: rgb(255, 255, 255);
+    }
+
+    .glass-code {
+      background: rgba(0, 0, 0, 0.03);
+      border: 1px solid rgba(0, 0, 0, 0.06);
+    }
+
+    .green-glow { box-shadow: 0 0 6px #10B981, 0 0 12px rgba(16, 185, 129, 0.3); }
+    .blue-glow { box-shadow: 0 0 6px #3B82F6, 0 0 12px rgba(59, 130, 246, 0.3); }
+    .purple-glow { box-shadow: 0 0 6px #8B5CF6, 0 0 12px rgba(139, 92, 246, 0.3); }
+    .amber-glow { box-shadow: 0 0 6px #F59E0B, 0 0 12px rgba(245, 158, 11, 0.3); }
+
+    .pulse-ring { animation: pulse-ring 2s ease-out infinite; }
+    @keyframes pulse-ring {
+      0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+      70% { box-shadow: 0 0 0 5px rgba(16, 185, 129, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+    .pulse-ring-amber { animation: pulse-ring-amber 2s ease-out infinite; }
+    @keyframes pulse-ring-amber {
+      0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+      70% { box-shadow: 0 0 0 5px rgba(245, 158, 11, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+    }
+
+    .spinner {
+      width: 9px;
+      height: 9px;
+      border: 1.5px solid transparent;
+      border-top-color: currentColor;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Island Container */
+    .island-container {
+      position: fixed;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 1000;
+      display: flex;
+      align-items: flex-start;
+    }
+
+    /* Collapsed Pill - reference collapsed.png design */
+    .island-collapsed {
+      width: 48px;
+      border-radius: 16px;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .island-collapsed .inner {
+      border-radius: 15px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 6px;
+      gap: 10px;
+    }
+
+    /* Expanded state */
+    .island-container:hover .island-collapsed {
+      width: 0;
+      opacity: 0;
+      padding: 0;
+    }
+
+    /* Card Panel */
+    .card-panel {
+      width: 0;
+      opacity: 0;
+      overflow: hidden;
+      border-radius: 16px;
+      transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .island-container:hover .card-panel {
+      width: 340px;
+      opacity: 1;
+    }
+
+    /* Vertical text */
+    .writing-vertical {
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+    }
+
+    /* Cards */
+    .card-wrapper {
+      position: relative;
+      overflow: hidden;
+      transition: height 0.4s ease;
+    }
+
+    .card-stack {
+      position: relative;
+    }
+
+    .card {
+      width: 100%;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+    }
+    .card.active {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+      position: relative;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-pink-100 via-purple-50 to-amber-100">
+
+  <!-- Floating Island Widget -->
+  <div class="island-container">
+    <!-- Collapsed Pill - outer frosted glass + inner pure white -->
+    <div class="island-collapsed border-outer">
+      <div class="inner border-inner">
+        <div class="relative">
+          <div class="absolute inset-0 w-2 h-2 rounded-full bg-emerald-500 pulse-ring"></div>
+          <div class="relative w-2 h-2 rounded-full bg-emerald-500 green-glow"></div>
+        </div>
+        <div class="writing-vertical text-slate-700 text-[10px] font-semibold tracking-wide" style="max-height: 60px; overflow: hidden;">
+          fix auth bug
+        </div>
+        <div class="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center">
+          <span class="text-[9px] font-bold text-slate-600">3</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card Panel -->
+    <div class="card-panel border-outer">
+      <div class="inner border-inner">
+        <div id="cardContainer" class="card-wrapper" style="height: 140px;">
+          <div id="cardSlide" class="card-stack">
+            <!-- Card 1: Task Done -->
+            <div class="card active p-3" data-index="0">
+              <div class="flex items-center gap-2 mb-2">
+                <div class="relative flex-shrink-0">
+                  <div class="absolute inset-0 w-2 h-2 rounded-full bg-emerald-500 pulse-ring"></div>
+                  <div class="relative w-2 h-2 rounded-full bg-emerald-500 green-glow"></div>
+                </div>
+                <span class="text-slate-800 font-semibold text-sm truncate flex-1">fix auth bug</span>
+                <div class="flex gap-1 flex-shrink-0">
+                  <span class="bg-slate-100 rounded-full px-1.5 py-0.5 text-[9px] font-medium text-slate-600">claude</span>
+                  <span class="bg-slate-100 rounded-full px-1.5 py-0.5 text-[9px] font-medium text-slate-600">10min</span>
+                </div>
+              </div>
+              <p class="text-[11px] text-slate-500 mb-1"><span class="text-slate-400 font-medium">User:</span> 帮我修复登录失败的问题</p>
+              <div class="flex items-center gap-1">
+                <svg class="w-3 h-3 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                <span class="text-emerald-500 font-medium text-xs">Done — Click to jump</span>
+              </div>
+            </div>
+
+            <!-- Card 2: In Progress -->
+            <div class="card p-3" data-index="1">
+              <div class="flex items-center gap-2 mb-2">
+                <div class="relative flex-shrink-0">
+                  <div class="absolute inset-0 w-2 h-2 rounded-full bg-amber-500 pulse-ring-amber"></div>
+                  <div class="relative w-2 h-2 rounded-full bg-amber-500 amber-glow"></div>
+                </div>
+                <span class="text-slate-800 font-semibold text-sm truncate flex-1">creating dashboard</span>
+                <div class="flex gap-1 flex-shrink-0">
+                  <span class="bg-slate-100 rounded-full px-1.5 py-0.5 text-[9px] font-medium text-slate-600">claude</span>
+                  <span class="bg-amber-50 rounded-full px-1.5 py-0.5 text-[9px] font-medium text-amber-600 flex items-center gap-1">
+                    <span class="spinner text-amber-500"></span>
+                    30s
+                  </span>
+                </div>
+              </div>
+              <div class="bg-slate-50 rounded-lg px-2 py-1.5 mb-2">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-[10px] text-slate-400">Progress</span>
+                  <span class="text-[10px] text-amber-600 font-medium">60%</span>
+                </div>
+                <div class="h-1 bg-slate-200 rounded-full overflow-hidden">
+                  <div class="h-full bg-amber-500 rounded-full" style="width: 60%"></div>
+                </div>
+              </div>
+              <p class="text-[11px] text-slate-500"><span class="text-slate-400 font-medium">Current:</span> Creating src/dashboard/index.tsx</p>
+            </div>
+
+            <!-- Card 3: Ask -->
+            <div class="card p-3" data-index="2">
+              <div class="flex items-center gap-2 mb-2">
+                <div class="relative flex-shrink-0">
+                  <div class="relative w-2 h-2 rounded-full bg-purple-500 purple-glow"></div>
+                </div>
+                <span class="text-slate-800 font-semibold text-sm truncate flex-1">create a react dashboard</span>
+                <div class="flex gap-1 flex-shrink-0">
+                  <span class="bg-slate-100 rounded-full px-1.5 py-0.5 text-[9px] font-medium text-slate-600">claude</span>
+                  <span class="bg-slate-100 rounded-full px-1.5 py-0.5 text-[9px] font-medium text-slate-600">2min</span>
+                </div>
+              </div>
+              <p class="text-[10px] text-slate-500 mb-1">Choose an option:</p>
+              <div class="space-y-1">
+                <button class="w-full text-left px-2 py-1.5 bg-purple-50 rounded-lg text-[11px]">
+                  <span class="font-medium text-purple-600">Create file</span> <span class="text-slate-600">src/dashboard/index.tsx</span>
+                </button>
+                <button class="w-full text-left px-2 py-1.5 bg-slate-50 rounded-lg text-[11px] hover:bg-purple-50 transition-colors">
+                  <span class="font-medium text-purple-500">Create file</span> <span class="text-slate-600">src/dashboard/components/Chart.tsx</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Card 4: Code Auth -->
+            <div class="card p-3" data-index="3">
+              <div class="flex items-center gap-2 mb-2">
+                <div class="relative flex-shrink-0">
+                  <div class="relative w-2 h-2 rounded-full bg-blue-500 blue-glow"></div>
+                </div>
+                <span class="text-slate-800 font-semibold text-sm truncate flex-1">optimize database queries</span>
+                <div class="flex gap-1 flex-shrink-0">
+                  <span class="bg-slate-100 rounded-full px-1.5 py-0.5 text-[9px] font-medium text-slate-600">sonnet</span>
+                  <span class="bg-slate-100 rounded-full px-1.5 py-0.5 text-[9px] font-medium text-slate-600">3min</span>
+                </div>
+              </div>
+              <p class="text-[11px] mb-2"><span class="font-medium text-blue-600">Edit</span> <span class="text-slate-600">src/api/users.ts</span></p>
+              <div class="glass-code rounded-lg p-2 text-[10px] font-mono leading-relaxed mb-2">
+                <div class="flex gap-1"><span class="text-slate-400 w-2 text-right flex-shrink-0 select-none">−</span><span class="text-slate-700">const users = await db.query('SELECT * FROM users');</span></div>
+                <div class="flex gap-1"><span class="text-blue-500 w-2 text-right flex-shrink-0 select-none">+</span><span class="text-slate-700">const users = await db.query('SELECT id, name, email FROM users');</span></div>
+                <div class="flex gap-1"><span class="text-slate-400 w-2 text-right flex-shrink-0 select-none"> </span><span class="text-slate-700">  .limit(100);</span></div>
+              </div>
+              <div class="flex gap-2">
+                <button class="flex-1 py-2 px-3 bg-slate-800 text-white font-semibold text-xs rounded-lg hover:bg-slate-700 transition-all">Deny</button>
+                <button class="flex-1 py-2 px-3 bg-emerald-500 text-white font-semibold text-xs rounded-lg hover:bg-emerald-600 transition-all">Accept</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Background hint -->
+  <div class="fixed bottom-6 left-6 text-xs text-slate-400">
+    Hover the pill on the left to expand
+  </div>
+
+  <script>
+    const cards = document.querySelectorAll('.card');
+    const cardSlide = document.getElementById('cardSlide');
+    const cardContainer = document.getElementById('cardContainer');
+    let currentIndex = 0;
+    let isExpanded = false;
+
+    const cardHeights = [150, 170, 160, 210];
+
+    function updateCards() {
+      cards.forEach((card, i) => {
+        if (i === currentIndex) {
+          card.classList.add('active');
+        } else {
+          card.classList.remove('active');
+        }
+      });
+      const height = cardHeights[currentIndex] || 140;
+      cardContainer.style.height = height + 'px';
+    }
+
+    document.querySelector('.card-panel').addEventListener('wheel', (e) => {
+      if (!isExpanded) return;
+      e.preventDefault();
+      if (e.deltaY > 0) {
+        currentIndex = Math.min(cards.length - 1, currentIndex + 1);
+      } else if (e.deltaY < 0) {
+        currentIndex = Math.max(0, currentIndex - 1);
+      }
+      updateCards();
+    }, { passive: false });
+
+    document.querySelector('.island-container').addEventListener('mouseenter', () => {
+      isExpanded = true;
+      updateCards();
+    });
+    document.querySelector('.island-container').addEventListener('mouseleave', () => {
+      isExpanded = false;
+      currentIndex = 0;
+      updateCards();
+    });
+
+    updateCards();
+  </script>
+
+</body>
+</html>
