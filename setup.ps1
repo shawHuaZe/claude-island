@@ -75,10 +75,32 @@ if (-not $SkipFrontend) {
         Remove-Item -Recurse -Force node_modules
     }
 
-    Write-Host "  Installing npm dependencies..."
-    npm install
+    # Use Chinese npm mirror for better download speed
+    Write-Host "  Configuring npm mirror..."
+    $originalRegistry = npm config get registry
+    npm config set registry https://registry.npmmirror.com
 
-    Write-Host "  Frontend setup complete!"
+    # Set Electron mirror for China
+    $env:ELECTRON_MIRROR = "https://npmmirror.com/mirrors/electron/"
+    $env:ELECTRON_BUILDER_BINARIES_MIRROR = "https://npmmirror.com/mirrors/electron-builder-binaries/"
+
+    Write-Host "  Installing npm dependencies (using mirror)..."
+    $npmResult = npm install 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "  npm install failed, retrying..." -ForegroundColor Yellow
+        # Try again
+        Start-Sleep -Seconds 3
+        $npmResult = npm install 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "  Warning: npm install had issues but continuing..." -ForegroundColor Yellow
+            Write-Host "  You may need to run 'npm install' manually with VPN" -ForegroundColor Yellow
+        }
+    } else {
+        Write-Host "  Frontend setup complete!"
+    }
+
+    # Restore original registry
+    npm config set registry $originalRegistry
 }
 
 # Configure Claude Code hooks
