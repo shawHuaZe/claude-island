@@ -1,0 +1,34 @@
+{
+  "hooks": [
+    {
+      "event": "SessionStart",
+      "url": "http://127.0.0.1:8080/hooks/SessionStart",
+      "async": true
+    },
+    {
+      "event": "SessionEnd",
+      "url": "http://127.0.0.1:8080/hooks/SessionEnd",
+      "async": true
+    },
+    {
+      "event": "PreToolUse",
+      "url": "http://127.0.0.1:8080/hooks/PreToolUse",
+      "async": true
+    },
+    {
+      "event": "PostToolUse",
+      "url": "http://127.0.0.1:8080/hooks/PostToolUse",
+      "async": true
+    },
+    {
+      "event": "PermissionRequest",
+      "url": "http://127.0.0.1:8080/hooks/PermissionRequest",
+      "async": true
+    },
+    {
+      "event": "Notification",
+      "url": "http://127.0.0.1:8080/hooks/Notification",
+      "async": true
+    }
+  ]
+}
